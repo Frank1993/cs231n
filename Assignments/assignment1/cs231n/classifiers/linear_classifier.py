@@ -7,7 +7,7 @@ class LinearClassifier(object):
   def __init__(self):
     self.W = None
 
-  def train(self, X, y, learning_rate=1e-3, reg=1e-5, num_iters=100,
+  def train(self, X, y, learning_rate=1e-2, reg=1e-5, num_iters=200,
             batch_size=200, verbose=False):
     """
     Train this linear classifier using stochastic gradient descent.
@@ -51,14 +51,14 @@ class LinearClassifier(object):
       #########################################################################
       batch_idx = np.random.choice(num_train,batch_size,replace = False)
 
-      X_batch = X[batch_idx,:]
-      y_batch = y[batch_idx]
+      #X_batch = X[batch_idx,:]
+      #y_batch = y[batch_idx]
       #########################################################################
       #                       END OF YOUR CODE                                #
       #########################################################################
 
       # evaluate loss and gradient
-      loss, grad = self.loss(X_batch, y_batch, reg)
+      loss, grad = self.loss(X, y, reg)
       loss_history.append(loss)
 
       # perform parameter update
@@ -76,6 +76,7 @@ class LinearClassifier(object):
       if verbose and it % 100 == 0:
         print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
 
+      print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
     return loss_history
 
   def predict(self, X):
@@ -135,3 +136,16 @@ class Softmax(LinearClassifier):
   def loss(self, X_batch, y_batch, reg):
     return softmax_loss_vectorized(self.W, X_batch, y_batch, reg)
 
+
+if __name__ == "__main__":
+  W = np.array([[1, 2, 3, 2, 1], [4, 5, 6, 2, 1], [7, 8, 9, 5, 7]], dtype=np.float64)  # C*D
+  W = W.T  # D*C
+  X = np.array([[1, 0, 0, 1, 0], [0, 1, 0, 0, 1], [0, 0, 1, 1, 0], [1, 0, 0, 0, 1]], dtype=np.float64)
+
+  y = [0, 1, 2, 0]
+
+
+  softmax = Softmax()
+  a = softmax.train(X,y)
+
+  print a
