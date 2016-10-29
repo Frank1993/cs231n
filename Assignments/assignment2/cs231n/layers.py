@@ -178,17 +178,23 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # storing your result in the running_mean and running_var variables.        #
     #############################################################################
 
-    #get the mean of every feature
-    mean = np.sum(x,axis = 0)/N
+    mean = np.mean(x,axis = 0)
 
-    # get the variance
-    variance = np.sum((x-mean)**2,axis = 0)/N
+    x_mu = x-mean
 
-    # get the x_hat
-    x_hat = (x-mean)/np.sqrt(variance+eps)
+    variance = np.mean(x_mu**2,axis = 0)
+
+    sqrtvar = np.sqrt(variance+eps)
+
+    ivar = 1/sqrtvar
+
+    x_hat = x_mu*ivar
+
+
+
+    out = gamma * x_hat + beta
+
     
-    out = gamma*x_hat + beta
-     
     cache['mean'] = mean
     cache['variance'] = variance
     cache['x_hat'] = x_hat
@@ -196,7 +202,11 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     cache['beta'] = beta
     cache['eps'] = eps
     cache['x'] = x
-    
+    cache["x_mu"] = x_mu
+    cache["sqrtvar"] = sqrtvar
+    cache["ivar"] = ivar
+
+
     # keeping track of running mean and variance
     running_mean = momentum * running_mean + (1 - momentum)*mean
     running_var = momentum * running_var + (1-momentum) * variance
@@ -260,51 +270,43 @@ def batchnorm_backward(dout, cache):
   
   #unwrap all this stuff
   mean = cache['mean']
-  variance = cache['variance']
+  var = cache['variance']
   x_hat = cache['x_hat']
+  x_mu = cache['x_mu']
+
+  ivar = cache["ivar"]
+  sqrtvar = cache["sqrtvar"]
+
   gamma = cache['gamma']
   beta = cache['beta']
   eps = cache['eps']
   x = cache['x']
   N = x.shape[0]
+  D = x.shape[1]
 
   # now we need to compute dx use d(uv) = d(u)*v + u*d(v)
 
-  dx_1 = gamma*dout
+  dgamma = np.sum(x_hat*dout,axis = 0)
+  dbeta = np.sum(dout,axis = 0)
 
-  # When we multiply a. (x-mean) by b. (mean+eps)^-0.5
-  dx_2_b = np.sum((x-mean) * dx_1, axis = 0) # dx_2_b is 
-  dx_2_a = ((variance+eps)**-0.5)*dx_1
+  dx_hat = dout * gamma
 
-  # When we have (variance+eps) ^-0.5
-  dx_3_b = (-0.5) * ((variance+eps)**-1.5) * dx_2_b
-    
-  # When we have addition of epsilon
-  dx_4_b = dx_3_b * 1
-    
-  # When we have the summation of calculating sigma
-  dx_5_b = np.ones_like(x)/N * dx_4_b
-    
-  # When we have to the power of 2 of calculating sigma
-  dx_6_b = 2*(x-mean) * dx_5_b
-    
-  # When we have to congregate both sources of dout1 and dout2
-  # In addition, we're also adding, so just multiply by 1 to show that
-  dx_7_a = dx_6_b * 1 + dx_2_a * 1
-  dx_7_b = dx_6_b * 1 + dx_2_a * 1
-    
-  # When multiplied by -1(so we can negate the adding to a subtract), value is -1 * prev_val
-  dx_8_b = -1*np.sum(dx_7_b, axis = 0)
-    
-  # When we have summation of calculating mean
-  dx_9_b = np.ones_like(x)/N * dx_8_b
-    
-  # When we have to congregate both sources of dout1 and dout2
-  dx_10 = dx_9_b + dx_7_a
-    
-  dgamma = np.sum(x_hat*dout, axis = 0)
-  dbeta = np.sum(dout, axis=0)
-  dx = dx_10
+  divar = np.sum(dx_hat* x_mu,axis = 0)
+
+  dx_mu1 = dx_hat * ivar
+
+  dsqrt_var = -divar/np.square(sqrtvar)
+
+  dvar = 0.5 * dsqrt_var /np.sqrt(var+eps)
+
+  dsquare = dvar * np.ones((N,D))/N  
+
+  dx_mu2 =2* dsquare * x_mu
+
+  dx_mu = dx_mu1 + dx_mu2
+
+  dx = dx_mu
+
 
   
   #############################################################################
