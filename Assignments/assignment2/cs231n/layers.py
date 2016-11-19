@@ -184,11 +184,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
 
     variance = np.mean(x_mu**2,axis = 0)
 
-    sqrtvar = np.sqrt(variance+eps)
 
-    ivar = 1/sqrtvar
-
-    x_hat = x_mu*ivar
+    x_hat = x_mu/np.sqrt(variance+eps)
 
 
 
@@ -203,8 +200,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     cache['eps'] = eps
     cache['x'] = x
     cache["x_mu"] = x_mu
-    cache["sqrtvar"] = sqrtvar
-    cache["ivar"] = ivar
+
 
 
     # keeping track of running mean and variance
@@ -270,12 +266,12 @@ def batchnorm_backward(dout, cache):
   
   #unwrap all this stuff
   mean = cache['mean']
-  var = cache['variance']
+  variance = cache['variance']
   x_hat = cache['x_hat']
   x_mu = cache['x_mu']
 
-  ivar = cache["ivar"]
-  sqrtvar = cache["sqrtvar"]
+  #ivar = cache["ivar"]
+  #sqrtvar = cache["sqrtvar"]
 
   gamma = cache['gamma']
   beta = cache['beta']
@@ -293,20 +289,24 @@ def batchnorm_backward(dout, cache):
 
   divar = np.sum(dx_hat* x_mu,axis = 0)
 
-  dx_mu1 = dx_hat * ivar
+  dx_mu1 = dx_hat/np.sqrt(variance+eps)
 
-  dsqrt_var = -divar/np.square(sqrtvar)
 
-  dvar = 0.5 * dsqrt_var /np.sqrt(var+eps)
+  dvar = -0.5 * divar/(variance+eps)**1.5
 
-  dsquare = dvar * np.ones((N,D))/N  
+  dsquare = 1.0/N * np.ones((N,D))*dvar
 
   dx_mu2 =2* dsquare * x_mu
 
   dx_mu = dx_mu1 + dx_mu2
 
-  dx = dx_mu
+  dx1 = dx_mu
 
+  dmean = - np.sum(dx_mu,axis = 0)
+
+  dx_2 = np.ones((N,D)) * dmean / N
+
+  dx = dx1 + dx_2
 
   
   #############################################################################
